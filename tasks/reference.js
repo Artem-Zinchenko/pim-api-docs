@@ -159,7 +159,13 @@ gulp.task('reference', ['clean-dist', 'less'], function() {
                             if (!data.categories[escapeCategory].resources[escapeTag]) {
                                 data.categories[escapeCategory].resources[escapeTag] = { resourceName: operation.tags[0], operations: {}};
                             }
-                            var groupedParameters = _.groupBy(operation.parameters, function(parameter) {
+                            const filteredParameters = _.filter(operation.parameters, function(param) {
+                                if (param.hasOwnProperty('x-from-version') === false) {
+                                    return true;
+                                }
+                                return param['x-from-version'] <= version;
+                            });
+                            var groupedParameters = _.groupBy(filteredParameters, function(parameter) {
                                 return parameter.in;
                             });
                             _.map(groupedParameters.body, function(parameter) {
@@ -183,6 +189,12 @@ gulp.task('reference', ['clean-dist', 'less'], function() {
                                     }
                                 });
                                 if(parameter.schema.items){
+                                    parameter.schema.items.properties = _.pickBy(parameter.schema.items.properties, function(property) {
+                                        if (property.hasOwnProperty('x-from-version') === false) {
+                                            return true;
+                                        }
+                                        return property['x-from-version'] <= version;
+                                    });
                                     _.map(parameter.schema.items.properties, function(property, propertyName) {
                                         property.default = (property.default === 0) ? '0' :
                                             (property.default === null) ? 'null' :
@@ -223,6 +235,21 @@ gulp.task('reference', ['clean-dist', 'less'], function() {
                                 var status = code.match(/^2.*$/) ? 'success' : 'error';
                                 response[status] = true;
                                 response.id = operationId + '_' + code;
+
+                                if ('x-examples-per-version' in response) {
+                                    const sortedExamples = _.reverse(_.sortBy(response['x-examples-per-version'], ['x-version']));
+                                    const closestExample = _.find(sortedExamples, function(exemplePerVersion) {
+                                        return exemplePerVersion['x-version'] <= version;
+                                    });
+                                    if (closestExample === undefined) {
+                                        throw new Error('Missing example for version "' + version + '" of route ' + verb + ' ' + pathUri);
+                                    }
+                                    console.log(closestExample['x-example']);
+                                    const stringValue = highlightJs.highlight('json', JSON.stringify(closestExample['x-example'], null, 2), true);
+                                    response.hljsExample = '<pre class="hljs"><code>' + stringValue.value + '</code></pre>';
+                                    return response;
+                                }
+
                                 var example = response.examples || response['x-examples'] || ((response.schema) ? response.schema.example : undefined);
                                 if (example) {
                                     var highlightjsExample = example['x-example-1'] ?

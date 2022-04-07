@@ -92,6 +92,7 @@ with_attribute_options:
   default: false
   type: boolean
   required: false
+  x-from-version: "5.0"
 with_table_select_options:
   name: with_table_select_options
   in: query

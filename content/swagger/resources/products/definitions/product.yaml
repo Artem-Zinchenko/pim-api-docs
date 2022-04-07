@@ -32,6 +32,7 @@ properties:
     description: Code of the parent product model when the product is a variant (only available since the 2.0). This parent can be modified since the 2.3.
     x-validation-rules: It is equal to an existing product model code only if the product is variant otherwise it's equal to null
     default: "null"
+    x-from-version: '2.0'
   values:
     type: object
     description: "Product attributes values, see <a href='/concepts/products.html#focus-on-the-products-values'>Product values</a> section for more details"
